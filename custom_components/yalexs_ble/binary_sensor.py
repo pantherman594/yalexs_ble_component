@@ -1,7 +1,5 @@
 """Support for yalexs ble binary sensors."""
 
-from __future__ import annotations
-
 from yalexs_ble import ConnectionInfo, DoorStatus, LockInfo, LockState
 
 from homeassistant.components.binary_sensor import (
@@ -39,7 +37,7 @@ class YaleXSBLEDoorSensor(YALEXSBLEEntity, BinarySensorEntity):
         """Update the state."""
         if new_state.door in (DoorStatus.OPENED, DoorStatus.AJAR):
             self._attr_is_on = True
-        elif new_state.door == DoorStatus.CLOSED:
+        elif new_state.door is DoorStatus.CLOSED:
             self._attr_is_on = False
         else:
             self._attr_is_on = None
