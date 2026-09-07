@@ -1,0 +1,80 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # This runs at 00:00 every Sunday
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  update-upstream:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      skip_pr: ${{ steps.push.outputs.skip_pr }}
+
+    steps:
+      - name: Install git-filter-repo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-filter-repo
+
+      - name: Checkout upstream
+        uses: actions/checkout@v6
+        with:
+          repository: home-assistant/core
+          ref: master
+          fetch-depth: 0
+
+      - name: Filter repo
+        run: |
+          git filter-repo --path homeassistant/components/yalexs_ble --path-rename homeassistant/components/:custom_components/ --force
+
+      - name: Force push
+        id: push
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          result="$(git push origin HEAD:upstream --force 2>&1)"
+          echo "$result"
+          if echo "$result" | grep -q "Everything up-to-date"; then
+            echo "No changes pushed, skipping PR creation."
+            echo "skip_pr=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip_pr=false" >> $GITHUB_OUTPUT
+          fi
+
+  create-pr:
+    needs: update-upstream
+    if: needs.update-upstream.outputs.skip_pr != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: upstream
+          fetch-depth: 0
+
+      - name: Create pull request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          PR_BODY="$(cat <<-EOF
+          This PR syncs the latest changes from the upstream repository.
+
+          Created by [sync-upstream.yml](https://github.com/${{ github.repository }}/blob/main/.github/workflows/sync-upstream.yml).
+          EOF
+          )"
+
+          gh pr create \
+            --title "Sync Upstream" \
+            --body "$PR_BODY" \
+            --base main \
+            --head upstream \
+            --reviewer pantherman594
