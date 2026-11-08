@@ -41,7 +41,7 @@ PLATFORMS: list[Platform] = [
 ]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: YALEXSBLEConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: YALEXSBLEConfigEntry) -> None:
     """Set up Yale Access Bluetooth from a config entry."""
     local_name = entry.data[CONF_LOCAL_NAME]
     address = entry.data[CONF_ADDRESS]
@@ -163,7 +163,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: YALEXSBLEConfigEntry) ->
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _async_shutdown)
     )
-    return True
 
 
 async def _async_wait_for_first_update(push_lock: PushLock, local_name: str) -> None:
@@ -178,6 +177,6 @@ async def _async_wait_for_first_update(push_lock: PushLock, local_name: str) -> 
         ) from ex
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: YALEXSBLEConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: YALEXSBLEConfigEntry) -> None:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    await hass.config_entries.async_unload_platforms_or_raise(entry, PLATFORMS)
